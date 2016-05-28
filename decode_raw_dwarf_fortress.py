@@ -159,7 +159,7 @@ print("frompath:", frompath)
 print("topath:", topath)
 
 
-if action in ["--decode", "--encode"]:
+if action in ["--decode", "--encode", "-d", "-e"]:
     if exists(frompath):
         if isdir(frompath):
             #Если цель - каталог
