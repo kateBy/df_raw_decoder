@@ -9,6 +9,8 @@ from_bytes = lambda x: int.from_bytes(x, byteorder="little")
 from_int16 = lambda x: x.to_bytes(2, byteorder="little")
 from_int32 = lambda x: x.to_bytes(4, byteorder="little")
 
+debug = False
+
 """Функция декодирования текстового raw-файла"""
 def decode_datafile(zipfile, txtfile):
 
@@ -91,7 +93,7 @@ def encode_datafile(txtfile, zipfile, _encoding="cp1251"):
 
 """Функция рекурсивного обхода и декодирования файлов
 Ищет файлы в каталоге data/ и сохраняет в data_src/"""
-def decode_directory(directory, outdir):
+def decode_directory(frompath, topath):
 
     #Пробуем обрабатывать все файлы, у которых нет расширения
     for root, directories, files in os.walk(frompath):
@@ -114,83 +116,88 @@ def encode_directory(inputdir, outputdir):
                 encode_datafile(joinPath(root, file), joinPath(new_path, fn))
 
 
-usage="""Dwarf Fortress RAW декодер/кодер
-использование:
-df_enc.py [настройки] <inputDir>  <outputDir>
-df_enc.py [настройки] <inputFile> <outputFile>
-
-Настройки:
--d  --decode - декодировать источник
--e  --encode - закодировать источник
--y  --yes    - отвечать ДА на вопрос о перезаписи
-"""
-
-func = {"directory":{"--decode":decode_directory,"--encode":encode_directory,
-                           "-d":decode_directory,      "-e":encode_directory},
-        "file"     :{"--decode":decode_datafile, "--encode":encode_datafile,
-                           "-d":decode_datafile,       "-e":encode_datafile}}
-
 def main():
-    import sys
+    from optparse import OptionParser
+
+    usage = "usage: %prog [options] src dst"
+
+    parser = OptionParser(usage=usage)
+    parser.add_option("-d", "--decode",
+                      action="store_true", dest="action_decode",
+                      default=False,
+                      help="декодировать источник")
     
-    if len(sys.argv) < 4:
-        print(usage)
-        exit()
+    parser.add_option("-e", "--encode",
+                      action="store_true", dest="action_encode",
+                      default=False,
+                      help="закодировать источник")
 
-    action = ""
-    overwrite = False
-    frompath = sys.argv[-2]
-    topath = sys.argv[-1]
+    parser.add_option("-y", "--yes",
+                      action="store_true", dest="rewrite",
+                      default=False,
+                      help="разрешить перезапись")
 
-    for option in sys.argv[1:-2]:
-        if option in ["--decode", "--encode", "-d", "-e"]:
-            action = option
-        elif option in ["--yes", "-y"]:
-            overwrite = True
+    parser.add_option("-v", "--verbose",
+                      action="store_true", dest="verbose",
+                      default=False,
+                      help="отображать процесс")
 
-    frompath = realpath(frompath)
-    topath   = realpath(topath)
+    (options, args) = parser.parse_args()
+    
+    if not options.action_decode and not options.action_encode:
+        parser.print_help()
+        parser.error("Необходимо выбрать метод (decode/encode)")
+    if options.action_decode and options.action_encode:
+        parser.print_help()
+        parser.error("Необходимо выбрать только один из методов")
+    if len(args) != 2:
+        parser.print_help()
+        parser.error("Необходимо указать источник и направление")
+    
+    frompath = realpath(args[0])
+    topath   = realpath(args[1])
 
-    print("action:", action)
-    print("overWrite:",overwrite)
-    print("frompath:", frompath)
-    print("topath:", topath)
+    if debug:
+        print("decode:", options.action_decode)
+        print("encode:", options.action_encode)
+        print("overWrite:", options.rewrite)
+        print("frompath:", frompath)
+        print("topath:", topath)
 
-
-    if action in ["--decode", "--encode", "-d", "-e"]:
-        if exists(frompath):
-            if isdir(frompath):
-                #Если цель - каталог
-                if exists(topath):
-                    if not overwrite:
-                        answer = input("Каталог %s существует, перезаписать? [y/N] " % topath)
-                        if not (answer in ["y","Y"]):
-                            print("Прервано пользователем")
-                            exit()
+    if exists(frompath):
+        if isdir(frompath):
+            #Если цель - каталог
+            if exists(topath):
+                if not options.rewrite:
+                    answer = input("Каталог %s\nсуществует, перезаписать? [y/N] " % topath)
+                    if not (answer in ["y","Y"]):
+                        print("Прервано пользователем")
+                        exit()
+            
+            #Обработка каталога, в зависимости от выбранного действия
+            if options.action_decode:
+                decode_directory(frompath, topath)
+            elif options.action_encode:
+                encode_directory(frompath, topath)
                 
-                #Обработка каталога, в зависимости от выбранного действия
-                func["directory"][action](frompath, topath)
+        elif isfile(frompath):
+            #Если цель - один файл
+            if exists(topath):
+                if not options.rewrite:
+                    answer = input("Файл %s\nсуществует, перезаписать? [y/N] " % topath)
+                    if not (answer in ["y","Y"]):
+                        print("Прервано пользователем")
+                        exit()
                     
-            elif isfile(frompath):
-                #Если цель - один файл
-                if exists(topath):
-                    if not overwrite:
-                        answer = input("Файл %s существует, перезаписать? [y/N] " % topath)
-                        if not (answer in ["y","Y"]):
-                            print("Прервано пользователем")
-                            exit()
-                        
-                #Обработка файла, в зависимости от выбранного действия
-                func["file"][action](frompath, topath)
-            else:
-                print("Не распознан тип файла")
+            #Обработка файла, в зависимости от выбранного действия
+            if options.action_decode:
+                decode_datafile(frompath, topath)
+            elif options.action_encode:
+                encode_datafile(frompath, topath)
         else:
-            print("Заданный путь к источнику не существует")
-        
+            print("Не распознан тип файла")
     else:
-        print(usage)
-        exit()
-
+        print("Заданный путь к источнику не существует")
 
 
 
