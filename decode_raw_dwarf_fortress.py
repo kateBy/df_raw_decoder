@@ -130,70 +130,71 @@ func = {"directory":{"--decode":decode_directory,"--encode":encode_directory,
         "file"     :{"--decode":decode_datafile, "--encode":encode_datafile,
                            "-d":decode_datafile,       "-e":encode_datafile}}
 
-import sys
-
-if __name__ != '__main__':
-    exit()
+def main():
+    import sys
     
-if len(sys.argv) < 4:
-    print(usage)
-    exit()
+    if len(sys.argv) < 4:
+        print(usage)
+        exit()
 
-action = ""
-overwrite = False
-frompath = sys.argv[-2]
-topath = sys.argv[-1]
+    action = ""
+    overwrite = False
+    frompath = sys.argv[-2]
+    topath = sys.argv[-1]
 
-for option in sys.argv[1:-2]:
-    if option in ["--decode", "--encode", "-d", "-e"]:
-        action = option
-    elif option in ["--yes", "-y"]:
-        overwrite = True
+    for option in sys.argv[1:-2]:
+        if option in ["--decode", "--encode", "-d", "-e"]:
+            action = option
+        elif option in ["--yes", "-y"]:
+            overwrite = True
 
-frompath = realpath(frompath)
-topath   = realpath(topath)
+    frompath = realpath(frompath)
+    topath   = realpath(topath)
 
-print("action:", action)
-print("overWrite:",overwrite)
-print("frompath:", frompath)
-print("topath:", topath)
+    print("action:", action)
+    print("overWrite:",overwrite)
+    print("frompath:", frompath)
+    print("topath:", topath)
 
 
-if action in ["--decode", "--encode", "-d", "-e"]:
-    if exists(frompath):
-        if isdir(frompath):
-            #Если цель - каталог
-            if exists(topath):
-                if not overwrite:
-                    answer = input("Каталог %s существует, перезаписать? [y/N] " % topath)
-                    if not (answer in ["y","Y"]):
-                        print("Прервано пользователем")
-                        exit()
-            
-            #Обработка каталога, в зависимости от выбранного действия
-            func["directory"][action](frompath, topath)
+    if action in ["--decode", "--encode", "-d", "-e"]:
+        if exists(frompath):
+            if isdir(frompath):
+                #Если цель - каталог
+                if exists(topath):
+                    if not overwrite:
+                        answer = input("Каталог %s существует, перезаписать? [y/N] " % topath)
+                        if not (answer in ["y","Y"]):
+                            print("Прервано пользователем")
+                            exit()
                 
-        elif isfile(frompath):
-            #Если цель - один файл
-            if exists(topath):
-                if not overwrite:
-                    answer = input("Файл %s существует, перезаписать? [y/N] " % topath)
-                    if not (answer in ["y","Y"]):
-                        print("Прервано пользователем")
-                        exit()
+                #Обработка каталога, в зависимости от выбранного действия
+                func["directory"][action](frompath, topath)
                     
-            #Обработка файла, в зависимости от выбранного действия
-            func["file"][action](frompath, topath)
+            elif isfile(frompath):
+                #Если цель - один файл
+                if exists(topath):
+                    if not overwrite:
+                        answer = input("Файл %s существует, перезаписать? [y/N] " % topath)
+                        if not (answer in ["y","Y"]):
+                            print("Прервано пользователем")
+                            exit()
+                        
+                #Обработка файла, в зависимости от выбранного действия
+                func["file"][action](frompath, topath)
+            else:
+                print("Не распознан тип файла")
         else:
-            print("Не распознан тип файла")
+            print("Заданный путь к источнику не существует")
+        
     else:
-        print("Заданный путь к источнику не существует")
-    
-else:
-    print(usage)
-    exit()
+        print(usage)
+        exit()
 
 
 
+
+if __name__ == '__main__':
+    main()
 
 
