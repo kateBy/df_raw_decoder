@@ -111,7 +111,7 @@ def encode_directory(inputdir, outputdir):
     #Пробуем обрабатывать все файлы с расширением .txt
     for root, directories, files in os.walk(inputdir):
         for file in files:
-            fn, ext = os.path.splitext(file) #Получаем имя файла без .txt
+            fn, ext = splitext(file) #Получаем имя файла без .txt
             if ext == ".txt":
                 new_path = root.replace(inputdir, outputdir)
                 encode_datafile(joinPath(root, file), joinPath(new_path, fn))
@@ -135,6 +135,20 @@ def load_dictionary(fn):
             strings_dict[i.msgid] = i.msgstr
 
     return strings_dict
+
+"""Функция построчного перевода текстового файла с помощью словаря"""
+def translate_file(srcFileName, dstFileName, transl_dict):
+    new_lines = []
+    with open(srcFileName, "rt") as infile:
+        for line in infile:
+            translated_line = transl_dict.get(line.strip()) 
+            if translated_line != None:
+                new_lines.append(translated_line+"\n")
+            else:
+                new_lines.append(line)
+                
+    with open(dstFileName, "wt") as outfile:
+        outfile.write("".join(new_lines))
         
 
 def main():
@@ -194,7 +208,7 @@ def main():
     
     frompath = realpath(args[0])
     topath   = realpath(args[1])
-    exit()
+    
     if exists(frompath):
         if isdir(frompath):
             #Если цель - каталог
