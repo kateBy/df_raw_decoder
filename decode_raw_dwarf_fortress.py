@@ -117,9 +117,25 @@ def encode_directory(inputdir, outputdir):
                 encode_datafile(joinPath(root, file), joinPath(new_path, fn))
                 
 """Функция загрузки файла с переводом в dict, указанный """
-def load_dictionary(fn, strings_dict):
+def load_dictionary(fn):
     import polib
-    
+    polibfile = None
+
+    name, ext = splitext(fn)
+    if ext == ".po":
+        polibfile = polib.pofile(fn)
+    elif ext == ".mo":
+        polibfile = polib.mofile(fn)
+    else:
+        raise ValueError("Неизвестный тип файла, необходимы файлы перевода po или mo")
+
+    strings_dict = {}
+    if polibfile != None:
+        for i in polibfile:
+            strings_dict[i.msgid] = i.msgstr
+
+    return strings_dict
+        
 
 def main():
     from optparse import OptionParser
@@ -165,8 +181,7 @@ def main():
     if options.dictionaryFile !=None:
         if options.action_decode:
             if exists(options.dictionaryFile):
-                TRASLATE_DICTIONARY = {}
-                load_dictionary(options.dictionaryFile, TRASLATE_DICTIONARY)
+                TRASLATE_DICTIONARY = load_dictionary(options.dictionaryFile)
                 print(options.dictionaryFile)
             else:
                 parser.error("Файл словаря %s не найден!" % options.dictionaryFile)
@@ -179,7 +194,7 @@ def main():
     
     frompath = realpath(args[0])
     topath   = realpath(args[1])
-
+    exit()
     if exists(frompath):
         if isdir(frompath):
             #Если цель - каталог
