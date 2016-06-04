@@ -3,7 +3,8 @@
 import zlib
 from io import BytesIO
 import os
-from os.path import isfile, isdir, exists, realpath, join as joinPath
+from os.path import isfile, isdir, exists, realpath,\
+                    split, splitext, join as joinPath
 
 from_bytes = lambda x: int.from_bytes(x, byteorder="little")
 from_int16 = lambda x: x.to_bytes(2, byteorder="little")
@@ -28,7 +29,7 @@ def decode_datafile(zipfile, txtfile):
         lines_count = from_bytes(buf.read(4)) #Первые 4 байта - кол-во строк
         result = []
         
-        file_path, fn = os.path.split(zipfile)
+        file_path, fn = split(zipfile)
         indexFile = False
         if fn == 'index': #Файл index имеет туже структуру, но немного "зашифрован"
             indexFile = True
@@ -62,7 +63,7 @@ def encode_datafile(txtfile, zipfile, _encoding="cp1251"):
 
     buf.write(from_int32(len(lines))) #Записываем количество строк
 
-    file_path, fn = os.path.split(zipfile)
+    file_path, fn = split(zipfile)
     indexFile = False
     if fn == 'index': #Файл index имеет туже структуру, но немного "зашифрован"
         indexFile = True
@@ -98,7 +99,7 @@ def decode_directory(frompath, topath):
     #Пробуем обрабатывать все файлы, у которых нет расширения
     for root, directories, files in os.walk(frompath):
         for file in files:
-            fn, ext = os.path.splitext(file)
+            fn, ext = splitext(file)
             if ext == "":
                 new_path = root.replace(frompath, topath)
                 decode_datafile(joinPath(root, file), joinPath(new_path, file) + ".txt")
@@ -114,7 +115,11 @@ def encode_directory(inputdir, outputdir):
             if ext == ".txt":
                 new_path = root.replace(inputdir, outputdir)
                 encode_datafile(joinPath(root, file), joinPath(new_path, fn))
-
+                
+"""Функция загрузки файла с переводом в dict, указанный """
+def load_dictionary(fn, strings_dict):
+    import polib
+    
 
 def main():
     from optparse import OptionParser
@@ -131,7 +136,12 @@ def main():
                       action="store_true", dest="action_encode",
                       default=False,
                       help="закодировать источник (файл или каталог)")
-
+    
+    parser.add_option("-t", "--translate",
+                      metavar="FILE", dest="dictionaryFile",
+                      default=None,
+                      help="переводить источник указанным файлом перевода (po/mo)")
+    
     parser.add_option("-y", "--yes",
                       action="store_true", dest="rewrite",
                       default=False,
@@ -147,22 +157,28 @@ def main():
     if not options.action_decode and not options.action_encode:
         parser.print_help()
         parser.error("Необходимо выбрать метод (decode/encode)")
+        
     if options.action_decode and options.action_encode:
         parser.print_help()
         parser.error("Необходимо выбрать только один из методов")
+        
+    if options.dictionaryFile !=None:
+        if options.action_decode:
+            if exists(options.dictionaryFile):
+                TRASLATE_DICTIONARY = {}
+                load_dictionary(options.dictionaryFile, TRASLATE_DICTIONARY)
+                print(options.dictionaryFile)
+            else:
+                parser.error("Файл словаря %s не найден!" % options.dictionaryFile)
+        else:
+            parser.error("Перевод происходит ТОЛЬКО при декодировании")
+    
     if len(args) != 2:
         parser.print_help()
         parser.error("Необходимо указать источник и направление")
     
     frompath = realpath(args[0])
     topath   = realpath(args[1])
-
-    if debug:
-        print("decode:", options.action_decode)
-        print("encode:", options.action_encode)
-        print("overWrite:", options.rewrite)
-        print("frompath:", frompath)
-        print("topath:", topath)
 
     if exists(frompath):
         if isdir(frompath):
