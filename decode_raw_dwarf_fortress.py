@@ -125,12 +125,12 @@ def main():
     parser.add_option("-d", "--decode",
                       action="store_true", dest="action_decode",
                       default=False,
-                      help="декодировать источник")
+                      help="декодировать источник (файл или каталог)")
     
     parser.add_option("-e", "--encode",
                       action="store_true", dest="action_encode",
                       default=False,
-                      help="закодировать источник")
+                      help="закодировать источник (файл или каталог)")
 
     parser.add_option("-y", "--yes",
                       action="store_true", dest="rewrite",
