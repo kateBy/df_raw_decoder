@@ -13,7 +13,7 @@ from_int32 = lambda x: x.to_bytes(4, byteorder="little")
 debug = False
 
 """Функция декодирования текстового raw-файла"""
-def decode_datafile(zipfile, txtfile):
+def decode_datafile(zipfile, txtfile, transl_dict = None):
 
     _zip = open(zipfile, 'rb')
     zip_length = from_bytes(_zip.read(4)) #Первые 4 байта - длина последующего архива
@@ -51,6 +51,9 @@ def decode_datafile(zipfile, txtfile):
             os.mkdir(_dir)
             
         open(txtfile, 'wt').writelines(result)
+        
+        if transl_dict != None:
+            translate_file(txtfile, txtfile, transl_dict)
          
     else:
         print('Некорректная длина файла', filename)
@@ -74,7 +77,7 @@ def encode_datafile(txtfile, zipfile, _encoding="cp1251"):
         buf.write(from_int32(_len))
         buf.write(from_int16(_len))
         if indexFile:
-            encoded = bytes([255-(i%5)-c for i,c in enumerate(line)])
+            encoded = bytes([(-(i%5)-c) % 256 for i,c in enumerate(line)])
             buf.write(encoded)
         else:
             buf.write(line)
@@ -94,7 +97,7 @@ def encode_datafile(txtfile, zipfile, _encoding="cp1251"):
 
 """Функция рекурсивного обхода и декодирования файлов
 Ищет файлы в каталоге data/ и сохраняет в data_src/"""
-def decode_directory(frompath, topath):
+def decode_directory(frompath, topath, transl_dict = None):
 
     #Пробуем обрабатывать все файлы, у которых нет расширения
     for root, directories, files in os.walk(frompath):
@@ -102,7 +105,7 @@ def decode_directory(frompath, topath):
             fn, ext = splitext(file)
             if ext == "":
                 new_path = root.replace(frompath, topath)
-                decode_datafile(joinPath(root, file), joinPath(new_path, file) + ".txt")
+                decode_datafile(joinPath(root, file), joinPath(new_path, file) + ".txt", transl_dict)
             
 
 
@@ -153,7 +156,7 @@ def translate_file(srcFileName, dstFileName, transl_dict):
 
 def main():
     from optparse import OptionParser
-
+    TRASLATE_DICTIONARY = None
     usage = "usage: %prog [options] src dst"
 
     parser = OptionParser(usage=usage)
@@ -170,7 +173,7 @@ def main():
     parser.add_option("-t", "--translate",
                       metavar="FILE", dest="dictionaryFile",
                       default=None,
-                      help="переводить источник указанным файлом перевода (po/mo)")
+                      help="перевести источник указанным словарём перевода (po/mo)")
     
     parser.add_option("-y", "--yes",
                       action="store_true", dest="rewrite",
@@ -186,7 +189,7 @@ def main():
     
     if not options.action_decode and not options.action_encode:
         parser.print_help()
-        parser.error("Необходимо выбрать метод (decode/encode)")
+        parser.error("Необходимо выбрать метод (decode/encode/translate)")
         
     if options.action_decode and options.action_encode:
         parser.print_help()
@@ -221,7 +224,7 @@ def main():
             
             #Обработка каталога, в зависимости от выбранного действия
             if options.action_decode:
-                decode_directory(frompath, topath)
+                decode_directory(frompath, topath, TRASLATE_DICTIONARY)
             elif options.action_encode:
                 encode_directory(frompath, topath)
                 
@@ -236,7 +239,7 @@ def main():
                     
             #Обработка файла, в зависимости от выбранного действия
             if options.action_decode:
-                decode_datafile(frompath, topath)
+                decode_datafile(frompath, topath, TRASLATE_DICTIONARY)
             elif options.action_encode:
                 encode_datafile(frompath, topath)
         else:
