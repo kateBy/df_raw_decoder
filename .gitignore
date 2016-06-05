@@ -2,6 +2,7 @@
 data
 data/*
 data_src/*
+*.sh
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

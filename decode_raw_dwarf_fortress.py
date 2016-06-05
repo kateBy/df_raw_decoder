@@ -44,14 +44,26 @@ def decode_datafile(zipfile, txtfile, transl_dict = None):
             if indexFile:
                 _str = bytes([255-(i%5)-c for i,c in enumerate(_str)])
 
-            result.append(_str.decode() + "\n") #Лучше чтобы все было сохранено в UTF-8
+            result.append(_str.decode()) #Лучше чтобы все было сохранено в UTF-8
 
         _dir = os.path.dirname(txtfile)
         if not exists(_dir):
             os.mkdir(_dir)
-            
-        open(txtfile, 'wt').writelines(result)
-        
+
+        if not indexFile:
+            #Склеиваем строчки текста, разбитые по \n
+            data = list("\n".join(result))
+            for i,c in enumerate(data):
+                if c == "\n" and data[i-1] != "]":
+                    if data[i+1] != "[":
+                        data[i] = " "
+                
+        if not indexFile:
+            open(txtfile, 'wt').write("".join(data))
+        else:
+            open(txtfile, 'wt').write("\n".join(result))
+
+        #Переводим файл по словарю, если он задан, конечно
         if transl_dict != None:
             translate_file(txtfile, txtfile, transl_dict)
          
@@ -135,7 +147,7 @@ def load_dictionary(fn):
     strings_dict = {}
     if polibfile != None:
         for i in polibfile:
-            strings_dict[i.msgid] = i.msgstr
+            strings_dict[i.msgid.replace("\n", " ")] = i.msgstr.replace("\n", " ")
 
     return strings_dict
 
@@ -144,10 +156,12 @@ def translate_file(srcFileName, dstFileName, transl_dict):
     new_lines = []
     with open(srcFileName, "rt") as infile:
         for line in infile:
-            translated_line = transl_dict.get(line.strip()) 
+            translated_line = transl_dict.get(line.strip().replace("\n", " ")) 
             if translated_line != None:
                 new_lines.append(translated_line+"\n")
             else:
+                #if not line.startswith("[B]"):
+                #    print(line.rstrip())
                 new_lines.append(line)
                 
     with open(dstFileName, "wt") as outfile:
@@ -199,7 +213,6 @@ def main():
         if options.action_decode:
             if exists(options.dictionaryFile):
                 TRASLATE_DICTIONARY = load_dictionary(options.dictionaryFile)
-                print(options.dictionaryFile)
             else:
                 parser.error("Файл словаря %s не найден!" % options.dictionaryFile)
         else:
